@@ -6,7 +6,7 @@
 
 Follyizer is an open-source bridge between **Meshtastic** and **Falcon Player (FPP)**. It allows a lighting installation to be monitored and controlled over a long-range LoRa mesh network without requiring Wi-Fi, cellular service, or Internet connectivity.
 
-The project was created for the [**Gothic Folly Cathedral**](https://thegothicfolly.com) installation at [**Burning Man 2026**](https://burningman.org/), but it is intended to be useful for any installation using Falcon Player, including holiday light displays, public art, museums, festivals, and other distributed lighting systems.
+The project was created for the [**Gothic Folly Cathedral**](https://thegothicfolly.com) installation at [**Burning Man 2026**](https://burningman.org/), but it is intended to be useful for any installation using [**Falcon Player**](https://github.com/FalconChristmas/fpp), including holiday light displays, public art, museums, festivals, and other distributed lighting systems, including [XLights](https://xlights.org/)
 
 The project acknowledges the great support from [**Burners Without Borders** (BWB)](https://burnerswithoutborders.org/) and [Burning Mesh](https://www.burningmesh.org/).
 
