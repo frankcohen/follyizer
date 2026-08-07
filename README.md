@@ -6,7 +6,7 @@
 
 Follyizer is an open-source bridge between **Meshtastic** and **Falcon Player (FPP)**. It allows a lighting installation to be monitored and controlled over a long-range LoRa mesh network without requiring Wi-Fi, cellular service, or Internet connectivity.
 
-The project was created for the [**Gothic Folly Cathedral**](https://thegothicfolly.com) installation at [**Burning Man 2026**](https://burningman.org/), but it is intended to be useful for any installation using [**Falcon Player**](https://github.com/FalconChristmas/fpp), including holiday light displays, public art, museums, festivals, and other distributed lighting systems, including [XLights](https://xlights.org/)
+The project was created for the [**Gothic Folly Cathedral**](https://thegothicfolly.com) installation at [**Burning Man 2026**](https://burningman.org/), but it is intended to be useful for any installation using [**Falcon Player**](https://github.com/FalconChristmas/fpp), including holiday light displays, public art, museums, festivals, and other distributed lighting systems, including [xLights](https://xlights.org/).
 
 The project acknowledges the great support from [**Burners Without Borders** (BWB)](https://burnerswithoutborders.org/) and [Burning Mesh](https://www.burningmesh.org/).
 
@@ -14,7 +14,7 @@ The project acknowledges the great support from [**Burners Without Borders** (BW
 
 **Frank Cohen**
 
-Creator and maintainer of Follyizer
+Creator and principal maintainer of Follyizer
 
 ---
 
@@ -86,31 +86,31 @@ Success is defined as:
 
 ## Command Protocol
 
-Commands use a compact text protocol designed for Meshtastic.
+Commands use the `FZ` Follyizer text protocol designed for Meshtastic.
 
 Example:
 
 ```text
-CF1 RUN TEST01 Q=42
+FZ RUN TEST01 Q=42
 ```
 
 Supported commands:
 
 ```text
-CF1 RUN <show>
-CF1 STOP
-CF1 STATUS
-CF1 BLACKOUT
+FZ RUN <show> Q=<sequence>
+FZ STOP Q=<sequence>
+FZ STATUS Q=<sequence>
+FZ BLACKOUT Q=<sequence>
 ```
 
 Responses:
 
 ```text
-CF1 ACK Q=42 RUN TEST01
+FZ ACK Q=42 RUN TEST01
 
-CF1 NAK Q=42 REASON=UNKNOWN_SHOW
+FZ NAK Q=42 REASON=UNKNOWN_SHOW
 
-CF1 STAT S=TEST01 P=PLAY T=01:24
+FZ STAT S=TEST01 P=PLAY T=01:24 Q=42
 ```
 
 Only approved playlist identifiers may be executed.
@@ -243,4 +243,4 @@ If you deploy Follyizer on an art installation, festival, museum exhibit, or hol
 
 ## License
 
-MIT License
+GPL version 3

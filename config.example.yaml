@@ -1,0 +1,23 @@
+meshtastic:
+  serial_device: /dev/ttyACM0
+  status_interval_seconds: 120
+  channel_index: 0
+  destination_node: null
+  authorized_senders: []
+
+fpp:
+  host: 127.0.0.1
+  port: 80
+  timeout_seconds: 5
+
+shows:
+  TEST01: Cathedral Test
+  AMBIENT: Ambient
+  MAIN: Main Show
+
+commands:
+  require_sequence_number: true
+  allow_broadcast_commands: false
+
+logging:
+  level: INFO

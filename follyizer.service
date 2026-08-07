@@ -1,0 +1,17 @@
+[Unit]
+Description=Follyizer Meshtastic-to-FPP bridge
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=fpp
+Group=fpp
+WorkingDirectory=/opt/follyizer
+ExecStart=/opt/follyizer/.venv/bin/python -m follyizer.app --config /opt/follyizer/config.yaml
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
