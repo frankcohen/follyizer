@@ -1,5 +1,5 @@
 [Unit]
-Description=Follyizer Meshtastic-to-FPP bridge
+Description=Follyizer persistent Meshtastic bridge
 After=network-online.target
 Wants=network-online.target
 
@@ -7,9 +7,9 @@ Wants=network-online.target
 Type=simple
 User=fpp
 Group=fpp
-WorkingDirectory=/opt/follyizer
-ExecStart=/opt/follyizer/.venv/bin/python -m follyizer.app --config /opt/follyizer/config.yaml
-Restart=always
+WorkingDirectory=/home/fpp/follyizer
+ExecStart=/home/fpp/follyizer/.venv/bin/python -m follyizer.app --config /home/fpp/follyizer/config.yaml
+Restart=on-failure
 RestartSec=5
 Environment=PYTHONUNBUFFERED=1
 

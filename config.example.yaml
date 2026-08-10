@@ -1,5 +1,5 @@
 meshtastic:
-  serial_device: /dev/ttyACM0
+  serial_device: /dev/ttyUSB0
   status_interval_seconds: 120
   channel_index: 0
   destination_node: null
