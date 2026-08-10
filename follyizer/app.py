@@ -5,8 +5,9 @@ import logging
 import signal
 import threading
 
+from follyizer.commands import CommandError, CommandType, parse_command
 from follyizer.config import AppConfig, load_config
-from follyizer.fpp_client import FppClient
+from follyizer.fpp_client import FppClient, FppStatus
 from follyizer.meshtastic_link import MeshtasticLink
 
 
@@ -16,7 +17,7 @@ FPP_POLL_INTERVAL_SECONDS = 10
 
 
 class Follyizer:
-    """Follyizer v0.1.1: persistent Meshtastic + FPP status polling."""
+    """Follyizer v0.1.2: persistent mesh + FPP polling + FZ STATUS."""
 
     def __init__(self, config: AppConfig):
         self.config = config
@@ -54,7 +55,10 @@ class Follyizer:
         )
         fpp_thread.start()
 
-        LOGGER.info("Listening for Meshtastic text. Press Ctrl-C to stop.")
+        LOGGER.info(
+            "Listening for Meshtastic text. STATUS command enabled. "
+            "Press Ctrl-C to stop."
+        )
         self.stop_event.wait()
 
         LOGGER.info("Follyizer stopping")
@@ -65,11 +69,60 @@ class Follyizer:
         self.stop_event.set()
 
     def handle_message(self, text: str, sender: str | None) -> None:
-        # Milestone 2 still does not parse or act on commands.
         LOGGER.info("MESHTASTIC RX from=%s text=%r", sender or "unknown", text)
 
+        # Ordinary Meshtastic chat is not a Follyizer command.
+        if not text.strip().upper().startswith("FZ "):
+            return
+
+        try:
+            command = parse_command(
+                text,
+                require_sequence_number=self.config.commands.require_sequence_number,
+            )
+        except CommandError as exc:
+            self._reply(sender, f"FZ NAK REASON={exc}")
+            return
+
+        q = (
+            f" Q={command.sequence}"
+            if command.sequence is not None
+            else ""
+        )
+
+        # Milestone 3 intentionally implements only STATUS.
+        if command.type is not CommandType.STATUS:
+            LOGGER.info(
+                "FZ command %s recognized but not implemented in milestone 3",
+                command.type.value,
+            )
+            self._reply(
+                sender,
+                f"FZ NAK{q} REASON=NOT_IMPLEMENTED",
+            )
+            return
+
+        self._handle_status(sender, command.sequence)
+
+    def _handle_status(self, sender: str | None, sequence: int | None) -> None:
+        q = f" Q={sequence}" if sequence is not None else ""
+
+        try:
+            status = self.fpp.get_status()
+            message = format_status_message(status, sequence)
+            LOGGER.info("MESHTASTIC TX to=%s text=%r", sender or "channel", message)
+            self._reply(sender, message)
+        except Exception as exc:
+            LOGGER.warning("FZ STATUS failed: %s", exc)
+            self._reply(sender, f"FZ NAK{q} REASON=FPP_ERROR")
+
+    def _reply(self, sender: str | None, text: str) -> None:
+        try:
+            self.mesh.send_text(text, destination_id=sender)
+        except Exception:
+            LOGGER.exception("Unable to send Meshtastic reply: %s", text)
+
     def _fpp_status_loop(self) -> None:
-        # Query immediately at startup, then every 10 seconds.
         while not self.stop_event.is_set():
             self._log_fpp_status()
 
@@ -100,14 +153,44 @@ class Follyizer:
                 status.version,
             )
         except Exception as exc:
-            # A temporary FPP/API failure must not kill Follyizer or release
-            # the Meshtastic serial connection.
             LOGGER.warning("FPP STATUS unavailable: %s", exc)
+
+
+def format_status_message(
+    status: FppStatus,
+    sequence: int | None = None,
+) -> str:
+    state = _compact(status.state).upper()
+    playlist = _compact(status.playlist)
+
+    volume = str(status.volume) if status.volume is not None else "?"
+    temp = (
+        str(round(status.temperature_c))
+        if status.temperature_c is not None
+        else "?"
+    )
+    power = "BAD" if status.power_bad else "OK"
+    q = f" Q={sequence}" if sequence is not None else ""
+
+    return (
+        f"FZ STAT "
+        f"S={playlist} "
+        f"P={state} "
+        f"T={status.elapsed}/{status.remaining} "
+        f"V={volume} "
+        f"C={temp} "
+        f"PWR={power}"
+        f"{q}"
+    )
+
+
+def _compact(value: str) -> str:
+    return str(value).strip().replace(" ", "_")[:24] or "-"
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Follyizer persistent Meshtastic and FPP status monitor"
+        description="Follyizer Meshtastic/FPP bridge"
     )
     parser.add_argument("--config", default="config.yaml")
     args = parser.parse_args()

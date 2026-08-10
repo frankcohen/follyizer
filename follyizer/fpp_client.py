@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import threading
 from typing import Any
 
 import requests
@@ -28,14 +29,16 @@ class FppClient:
         self.base_url = f"http://{host}:{port}"
         self.timeout_seconds = timeout_seconds
         self.session = requests.Session()
+        self._lock = threading.Lock()
 
     def get_status(self) -> FppStatus:
-        response = self.session.get(
-            f"{self.base_url}/api/fppd/status",
-            timeout=self.timeout_seconds,
-        )
-        response.raise_for_status()
-        data = response.json()
+        with self._lock:
+            response = self.session.get(
+                f"{self.base_url}/api/fppd/status",
+                timeout=self.timeout_seconds,
+            )
+            response.raise_for_status()
+            data = response.json()
 
         playlist_data = data.get("current_playlist") or {}
         playlist = str(playlist_data.get("playlist") or "-")
@@ -55,7 +58,8 @@ class FppClient:
         )
 
     def close(self) -> None:
-        self.session.close()
+        with self._lock:
+            self.session.close()
 
 
 def _to_int(value: Any) -> int | None:

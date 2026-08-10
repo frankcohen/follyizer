@@ -29,10 +29,14 @@ def parse_command(text: str, require_sequence_number: bool = True) -> Command:
         raise CommandError("BAD_PROTOCOL")
 
     verb = parts[1].upper()
-    show_id = None
-    sequence = None
+    show_id: str | None = None
 
-    if verb == "RUN":
+    try:
+        command_type = CommandType(verb)
+    except ValueError as exc:
+        raise CommandError("UNKNOWN_COMMAND") from exc
+
+    if command_type is CommandType.RUN:
         if len(parts) < 3:
             raise CommandError("MISSING_SHOW")
         show_id = parts[2].upper()
@@ -40,19 +44,29 @@ def parse_command(text: str, require_sequence_number: bool = True) -> Command:
     else:
         trailing = parts[2:]
 
+    sequence: int | None = None
+
     for token in trailing:
-        if token.upper().startswith("Q="):
-            try:
-                sequence = int(token.split("=", 1)[1])
-            except ValueError as exc:
-                raise CommandError("BAD_SEQUENCE") from exc
+        if not token.upper().startswith("Q="):
+            raise CommandError("UNEXPECTED_ARGUMENT")
+
+        if sequence is not None:
+            raise CommandError("DUPLICATE_SEQUENCE")
+
+        value = token.split("=", 1)[1]
+        try:
+            sequence = int(value)
+        except ValueError as exc:
+            raise CommandError("BAD_SEQUENCE") from exc
+
+        if sequence < 0:
+            raise CommandError("BAD_SEQUENCE")
 
     if require_sequence_number and sequence is None:
         raise CommandError("MISSING_SEQUENCE")
 
-    try:
-        command_type = CommandType(verb)
-    except ValueError as exc:
-        raise CommandError("UNKNOWN_COMMAND") from exc
-
-    return Command(type=command_type, show_id=show_id, sequence=sequence)
+    return Command(
+        type=command_type,
+        show_id=show_id,
+        sequence=sequence,
+    )
