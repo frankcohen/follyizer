@@ -60,3 +60,9 @@ def test_unexpected_status_argument_rejected():
         assert str(exc) == "UNEXPECTED_ARGUMENT"
     else:
         raise AssertionError("Expected CommandError")
+
+
+def test_status_keywords_are_case_insensitive():
+    command = parse_command("fz status q=7")
+    assert command.type is CommandType.STATUS
+    assert command.sequence == 7

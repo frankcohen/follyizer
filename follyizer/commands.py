@@ -39,7 +39,11 @@ def parse_command(text: str, require_sequence_number: bool = True) -> Command:
     if command_type is CommandType.RUN:
         if len(parts) < 3:
             raise CommandError("MISSING_SHOW")
-        show_id = parts[2].upper()
+
+        # Protocol keywords are case-insensitive, but the playlist name is
+        # preserved exactly as typed because FPP playlist names may be
+        # case-sensitive.
+        show_id = parts[2]
         trailing = parts[3:]
     else:
         trailing = parts[2:]
