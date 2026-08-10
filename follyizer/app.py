@@ -17,7 +17,7 @@ FPP_POLL_INTERVAL_SECONDS = 10
 
 
 class Follyizer:
-    """Follyizer v0.1.2: persistent mesh + FPP polling + FZ STATUS."""
+    """Follyizer v0.1.3: persistent mesh + FPP STATUS + FZ RUN."""
 
     def __init__(self, config: AppConfig):
         self.config = config
@@ -90,19 +90,58 @@ class Follyizer:
             else ""
         )
 
-        # Milestone 3 intentionally implements only STATUS.
-        if command.type is not CommandType.STATUS:
-            LOGGER.info(
-                "FZ command %s recognized but not implemented in milestone 3",
-                command.type.value,
-            )
-            self._reply(
-                sender,
-                f"FZ NAK{q} REASON=NOT_IMPLEMENTED",
-            )
+        if command.type is CommandType.STATUS:
+            self._handle_status(sender, command.sequence)
             return
 
-        self._handle_status(sender, command.sequence)
+        if command.type is CommandType.RUN:
+            self._handle_run(sender, command.show_id, command.sequence)
+            return
+
+        # STOP and BLACKOUT remain intentionally unimplemented.
+        LOGGER.info(
+            "FZ command %s recognized but not implemented in milestone 4",
+            command.type.value,
+        )
+        self._reply(
+            sender,
+            f"FZ NAK{q} REASON=NOT_IMPLEMENTED",
+        )
+
+    def _handle_run(
+        self,
+        sender: str | None,
+        playlist_name: str | None,
+        sequence: int | None,
+    ) -> None:
+        q = f" Q={sequence}" if sequence is not None else ""
+
+        if not playlist_name:
+            self._reply(sender, f"FZ NAK{q} REASON=MISSING_SHOW")
+            return
+
+        try:
+            LOGGER.info(
+                "FPP RUN playlist=%s requested_by=%s",
+                playlist_name,
+                sender or "unknown",
+            )
+            self.fpp.start_playlist(playlist_name)
+
+            reply = f"FZ ACK{q} RUN {playlist_name}"
+            LOGGER.info(
+                "MESHTASTIC TX to=%s text=%r",
+                sender or "channel",
+                reply,
+            )
+            self._reply(sender, reply)
+        except Exception as exc:
+            LOGGER.warning(
+                "FZ RUN failed playlist=%s: %s",
+                playlist_name,
+                exc,
+            )
+            self._reply(sender, f"FZ NAK{q} REASON=FPP_ERROR")
 
     def _handle_status(self, sender: str | None, sequence: int | None) -> None:
         q = f" Q={sequence}" if sequence is not None else ""

@@ -1,6 +1,6 @@
 [project]
 name = "follyizer"
-version = "0.1.2"
+version = "0.1.3"
 description = "Meshtastic remote control and status bridge for Falcon Player"
 requires-python = ">=3.11"
 dependencies = [

@@ -57,6 +57,24 @@ class FppClient:
             raw=data,
         )
 
+    def start_playlist(self, playlist_name: str) -> None:
+        """
+        Start an FPP playlist by its exact FPP playlist name.
+
+        Milestone 4 intentionally performs no alias/translation lookup:
+        the name received in `FZ RUN <name>` is the name sent to FPP.
+        """
+        with self._lock:
+            response = self.session.post(
+                f"{self.base_url}/api/command",
+                json={
+                    "command": "Start Playlist",
+                    "args": [playlist_name, "false"],
+                },
+                timeout=self.timeout_seconds,
+            )
+            response.raise_for_status()
+
     def close(self) -> None:
         with self._lock:
             self.session.close()
