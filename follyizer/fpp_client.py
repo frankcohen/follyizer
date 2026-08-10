@@ -9,15 +9,20 @@ import requests
 @dataclass(frozen=True)
 class FppStatus:
     state: str
-    playlist: str | None
-    sequence: str | None
-    elapsed_seconds: int | None
+    playlist: str
+    sequence: str
+    song: str
+    elapsed: str
+    remaining: str
+    volume: int | None
+    temperature_c: float | None
+    power_bad: bool
+    version: str
     raw: dict[str, Any]
 
 
 class FppClient:
-    # Thin FPP HTTP adapter. Endpoint details are isolated here because they
-    # may need adjustment after testing against the Cathedral team's FPP version.
+    """Small HTTP client for the FPP status API."""
 
     def __init__(self, host: str, port: int = 80, timeout_seconds: int = 5):
         self.base_url = f"http://{host}:{port}"
@@ -32,37 +37,25 @@ class FppClient:
         response.raise_for_status()
         data = response.json()
 
+        playlist_data = data.get("current_playlist") or {}
+        playlist = str(playlist_data.get("playlist") or "-")
+
         return FppStatus(
-            state=str(data.get("status_name") or data.get("status") or "UNKNOWN"),
-            playlist=data.get("current_playlist") or data.get("playlist"),
-            sequence=data.get("current_sequence") or data.get("sequence"),
-            elapsed_seconds=_to_int(data.get("seconds_elapsed")),
+            state=str(data.get("status_name") or "unknown"),
+            playlist=playlist,
+            sequence=str(data.get("current_sequence") or "-"),
+            song=str(data.get("current_song") or "-"),
+            elapsed=str(data.get("time_elapsed") or "00:00"),
+            remaining=str(data.get("time_remaining") or "00:00"),
+            volume=_to_int(data.get("volume")),
+            temperature_c=_find_cpu_temperature(data.get("sensors") or []),
+            power_bad=bool(data.get("powerBad", False)),
+            version=str(data.get("version") or "unknown"),
             raw=data,
         )
 
-    def start_playlist(self, playlist_name: str) -> None:
-        response = self.session.post(
-            f"{self.base_url}/api/command",
-            json={"command": "Start Playlist", "args": [playlist_name]},
-            timeout=self.timeout_seconds,
-        )
-        response.raise_for_status()
-
-    def stop_gracefully(self) -> None:
-        response = self.session.post(
-            f"{self.base_url}/api/command",
-            json={"command": "Stop Gracefully", "args": []},
-            timeout=self.timeout_seconds,
-        )
-        response.raise_for_status()
-
-    def blackout(self) -> None:
-        response = self.session.post(
-            f"{self.base_url}/api/command",
-            json={"command": "Stop Now", "args": []},
-            timeout=self.timeout_seconds,
-        )
-        response.raise_for_status()
+    def close(self) -> None:
+        self.session.close()
 
 
 def _to_int(value: Any) -> int | None:
@@ -70,3 +63,17 @@ def _to_int(value: Any) -> int | None:
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+def _find_cpu_temperature(sensors: list[dict[str, Any]]) -> float | None:
+    for sensor in sensors:
+        label = str(sensor.get("label") or "").strip().lower()
+        value_type = str(sensor.get("valueType") or "").strip().lower()
+
+        if "cpu" in label and value_type == "temperature":
+            try:
+                return float(sensor.get("value"))
+            except (TypeError, ValueError):
+                return None
+
+    return None
