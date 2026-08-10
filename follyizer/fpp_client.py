@@ -75,6 +75,19 @@ class FppClient:
             )
             response.raise_for_status()
 
+    def stop_playlist(self) -> None:
+        """Stop the currently playing FPP playlist."""
+        with self._lock:
+            response = self.session.post(
+                f"{self.base_url}/api/command",
+                json={
+                    "command": "Stop Now",
+                    "args": [],
+                },
+                timeout=self.timeout_seconds,
+            )
+            response.raise_for_status()
+
     def close(self) -> None:
         with self._lock:
             self.session.close()

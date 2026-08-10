@@ -17,7 +17,7 @@ FPP_POLL_INTERVAL_SECONDS = 10
 
 
 class Follyizer:
-    """Follyizer v0.1.3: persistent mesh + FPP STATUS + FZ RUN."""
+    """Follyizer v0.1.4: persistent mesh + FPP STATUS + FZ RUN."""
 
     def __init__(self, config: AppConfig):
         self.config = config
@@ -98,9 +98,13 @@ class Follyizer:
             self._handle_run(sender, command.show_id, command.sequence)
             return
 
-        # STOP and BLACKOUT remain intentionally unimplemented.
+        if command.type is CommandType.STOP:
+            self._handle_stop(sender, command.sequence)
+            return
+
+        # BLACKOUT remains intentionally unimplemented.
         LOGGER.info(
-            "FZ command %s recognized but not implemented in milestone 4",
+            "FZ command %s recognized but not implemented in milestone 5",
             command.type.value,
         )
         self._reply(
@@ -141,6 +145,31 @@ class Follyizer:
                 playlist_name,
                 exc,
             )
+            self._reply(sender, f"FZ NAK{q} REASON=FPP_ERROR")
+
+    def _handle_stop(
+        self,
+        sender: str | None,
+        sequence: int | None,
+    ) -> None:
+        q = f" Q={sequence}" if sequence is not None else ""
+
+        try:
+            LOGGER.info(
+                "FPP STOP requested_by=%s",
+                sender or "unknown",
+            )
+            self.fpp.stop_playlist()
+
+            reply = f"FZ ACK{q} STOP"
+            LOGGER.info(
+                "MESHTASTIC TX to=%s text=%r",
+                sender or "channel",
+                reply,
+            )
+            self._reply(sender, reply)
+        except Exception as exc:
+            LOGGER.warning("FZ STOP failed: %s", exc)
             self._reply(sender, f"FZ NAK{q} REASON=FPP_ERROR")
 
     def _handle_status(self, sender: str | None, sequence: int | None) -> None:
