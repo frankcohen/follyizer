@@ -1,8 +1,20 @@
 meshtastic:
   serial_device: /dev/ttyUSB0
   status_interval_seconds: 120
+  # Control channel index. Follyizer ONLY executes FZ commands that arrive on
+  # this channel; commands on any other channel (including the public default
+  # channel 0) are ignored. Put your private control channel here - e.g. set
+  # this to 1 and keep the public default on channel 0 for normal mesh
+  # presence. Replies are also sent on this channel. The channel PSK lives on
+  # the Meshtastic node (set via the app/CLI/channel-URL) and is never stored
+  # here.
   channel_index: 0
   destination_node: null
+  # Optional per-sender allowlist of Meshtastic node IDs, e.g.
+  #   authorized_senders: ["!be49a244", "!043a241c"]
+  # An empty list allows any sender that can already reach the control
+  # channel. Node IDs are self-asserted and spoofable, so this is
+  # defense-in-depth on top of the channel PSK, not the primary control.
   authorized_senders: []
 
 fpp:
