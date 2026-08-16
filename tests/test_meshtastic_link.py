@@ -30,6 +30,7 @@ def test_receive_forwards_text_and_sender():
 
     packet = {
         "fromId": "!be49a244",
+        "channel": 1,
         "decoded": {
             "portnum": "TEXT_MESSAGE_APP",
             "text": "Hello Follyizer",
@@ -37,4 +38,20 @@ def test_receive_forwards_text_and_sender():
     }
 
     link._on_receive(packet, MagicMock())
-    callback.assert_called_once_with("Hello Follyizer", "!be49a244")
+    callback.assert_called_once_with("Hello Follyizer", "!be49a244", 1)
+
+
+def test_receive_defaults_channel_zero_when_absent():
+    callback = MagicMock()
+    link = MeshtasticLink("/dev/ttyUSB0", 0, None, callback)
+
+    packet = {
+        "fromId": "!be49a244",
+        "decoded": {
+            "portnum": "TEXT_MESSAGE_APP",
+            "text": "Hello Follyizer",
+        },
+    }
+
+    link._on_receive(packet, MagicMock())
+    callback.assert_called_once_with("Hello Follyizer", "!be49a244", 0)
