@@ -68,11 +68,45 @@ class Follyizer:
     def stop(self) -> None:
         self.stop_event.set()
 
-    def handle_message(self, text: str, sender: str | None) -> None:
-        LOGGER.info("MESHTASTIC RX from=%s text=%r", sender or "unknown", text)
+    def handle_message(
+        self, text: str, sender: str | None, channel: int = 0
+    ) -> None:
+        LOGGER.info(
+            "MESHTASTIC RX from=%s channel=%s text=%r",
+            sender or "unknown",
+            channel,
+            text,
+        )
 
         # Ordinary Meshtastic chat is not a Follyizer command.
         if not text.strip().upper().startswith("FZ "):
+            return
+
+        # Only honor commands that arrive on the configured control channel.
+        # The Meshtastic firmware has already decrypted the packet, so arrival
+        # on this index proves the sender holds that channel's PSK. Commands on
+        # any other channel - including the public default channel - are ignored.
+        if channel != self.config.meshtastic.channel_index:
+            LOGGER.warning(
+                "Ignoring FZ command on channel=%s; control channel is %s (from=%s)",
+                channel,
+                self.config.meshtastic.channel_index,
+                sender or "unknown",
+            )
+            return
+
+        # Optional per-sender allowlist, layered on top of the channel PSK.
+        # An empty authorized_senders list disables the allowlist and permits
+        # any sender that can already reach the control channel. Node IDs are
+        # self-asserted and spoofable, so this is defense-in-depth, not the
+        # primary control.
+        authorized = self.config.meshtastic.authorized_senders
+        if authorized and (sender is None or sender not in authorized):
+            LOGGER.warning(
+                "Ignoring FZ command from unauthorized sender=%s on channel=%s",
+                sender or "unknown",
+                channel,
+            )
             return
 
         try:

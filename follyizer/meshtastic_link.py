@@ -25,7 +25,7 @@ class MeshtasticLink:
         serial_device: str,
         channel_index: int,
         destination_node: str | None,
-        on_text: Callable[[str, str | None], None],
+        on_text: Callable[[str, str | None, int], None],
     ):
         self.serial_device = serial_device
         self.channel_index = channel_index
@@ -107,9 +107,22 @@ class MeshtasticLink:
             return
 
         sender = packet.get("fromId")
-        LOGGER.debug("Raw Meshtastic packet received from %s", sender)
+
+        # The channel index the packet arrived on. meshtastic-python omits this
+        # field for channel 0, so a missing value defaults to 0. This is the
+        # decrypted-channel index, not a key - the firmware has already
+        # verified the PSK before handing us the packet.
+        channel = packet.get("channel", 0)
+        try:
+            channel = int(channel)
+        except (TypeError, ValueError):
+            channel = 0
+
+        LOGGER.debug(
+            "Raw Meshtastic packet received from %s on channel %s", sender, channel
+        )
 
         try:
-            self.on_text(str(text), str(sender) if sender else None)
+            self.on_text(str(text), str(sender) if sender else None, channel)
         except Exception:
             LOGGER.exception("Unhandled exception in Meshtastic receive callback")
