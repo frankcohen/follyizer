@@ -446,6 +446,40 @@ Playlist names are **not normalized**. `Test01` is passed to FPP as `Test01`.
 
 ---
 
+# Access Control
+
+Follyizer does not perform any encryption itself. The Meshtastic firmware on the attached node decrypts packets using the channel PSK **before** Follyizer ever sees them, so the practical trust boundary is the Meshtastic channel key. Two additional gates are enforced before any `FZ` command is executed against FPP:
+
+## Control channel
+
+Follyizer only executes commands that arrive on the channel index configured as `meshtastic.channel_index`. A command that arrives on any other channel — including the public default channel (index 0) — is logged and dropped.
+
+The recommended layout:
+
+```text
+channel 0  →  public default channel (normal mesh presence)
+channel 1  →  private control channel (secret PSK, operators only)
+```
+
+Set `channel_index: 1`, provision the node with channel 1 = your private control channel, and only holders of the channel-1 PSK can drive FPP. The public channel can remain configured for normal mesh use without being able to command the installation.
+
+**No key material lives in this repository or in `config.yaml`.** Channel/PSK provisioning stays on the Meshtastic node (set via the app, CLI, or a shared channel-URL/QR). `config.yaml` only ever holds `channel_index`, a plain integer.
+
+## Sender allowlist
+
+`meshtastic.authorized_senders` is an optional list of Meshtastic node IDs permitted to issue commands:
+
+```yaml
+authorized_senders: ["!be49a244", "!043a241c"]
+```
+
+- Empty list (default) → any sender that can reach the control channel is allowed.
+- Non-empty list → commands from node IDs not on the list are dropped.
+
+Meshtastic node IDs are self-asserted and can be spoofed, so this allowlist is **defense-in-depth** layered on top of the channel PSK, not the primary access control. The channel key remains the real gate.
+
+---
+
 # What `FZ STAT` Means
 
 Example:
@@ -586,7 +620,7 @@ Recommended next steps are:
 5. Test with the Gothic Folly team's actual Raspberry Pi/FPP configuration.
 6. Test with a real xLights/FPP sequence.
 7. Test through the real Falcon controller and LED system.
-8. Decide whether sender authorization is needed for playa operation.
+8. ~~Decide whether sender authorization is needed for playa operation.~~ A control-channel gate and an optional `authorized_senders` allowlist are now enforced (see **Access Control**). Remaining work here is operational: choose the control channel index and distribute its PSK to operators.
 9. Decide operationally whether `BLACKOUT` should be distinct from `STOP`.
 10. Perform a real-world Meshtastic range/reliability test before deployment.
 
