@@ -446,6 +446,92 @@ Playlist names are **not normalized**. `Test01` is passed to FPP as `Test01`.
 
 ---
 
+
+# Access Control
+
+Follyizer controls a real lighting system, so `FZ` commands should not be accepted indiscriminately from every Meshtastic channel or node.
+
+Follyizer uses two layers of access control:
+
+1. **A dedicated Meshtastic control channel**
+2. **An optional sender allowlist**
+
+## Dedicated control channel
+
+Follyizer only executes `FZ` commands received on the Meshtastic channel configured by `meshtastic.channel_index`.
+
+A recommended arrangement for the Gothic Folly is:
+
+```text
+Channel 0 — Public/default Meshtastic traffic
+Channel 1 — Private Follyizer control channel
+```
+
+Configure Follyizer for the private control channel:
+
+```yaml
+meshtastic:
+  serial_device: /dev/ttyUSB0
+  channel_index: 1
+```
+
+An `FZ RUN`, `FZ STOP`, or `FZ STATUS` command received on another channel is ignored.
+
+The private control channel should use a Meshtastic PSK known only to authorized operators. **The PSK is not stored in Follyizer or `config.yaml`.** Channel encryption and PSK provisioning remain on the Meshtastic nodes; Follyizer stores only the non-secret channel index.
+
+## Optional sender allowlist
+
+Follyizer can additionally restrict commands to specific Meshtastic node IDs:
+
+```yaml
+meshtastic:
+  serial_device: /dev/ttyUSB0
+  channel_index: 1
+  authorized_senders:
+    - "!be49a244"
+    - "!12345678"
+```
+
+When `authorized_senders` contains node IDs, commands from other nodes are ignored. When the list is empty, any sender on the configured control channel may issue Follyizer commands.
+
+The allowlist is **defense-in-depth, not cryptographic authentication**. Meshtastic node IDs can be spoofed or self-asserted. The private channel PSK remains the primary access-control boundary.
+
+## Command decision
+
+```text
+Meshtastic message
+        │
+        ▼
+Is it an FZ command?
+        │
+        ▼
+Is it on the configured
+control channel?
+        │
+     NO ├──────────► Ignore
+        │ YES
+        ▼
+Is authorized_senders
+configured?
+        │
+   NO   ├──────────► Execute
+        │ YES
+        ▼
+Is sender on allowlist?
+        │
+     NO ├──────────► Ignore
+        │ YES
+        ▼
+Execute FZ command
+        │
+        ▼
+Falcon Player
+```
+
+These checks happen before an `FZ` command is executed against Falcon Player.
+
+---
+
 # What `FZ STAT` Means
 
 Example:
@@ -586,9 +672,12 @@ Recommended next steps are:
 5. Test with the Gothic Folly team's actual Raspberry Pi/FPP configuration.
 6. Test with a real xLights/FPP sequence.
 7. Test through the real Falcon controller and LED system.
-8. Decide whether sender authorization is needed for playa operation.
-9. Decide operationally whether `BLACKOUT` should be distinct from `STOP`.
-10. Perform a real-world Meshtastic range/reliability test before deployment.
+8. Configure and test a private Follyizer Meshtastic control channel.
+9. Populate `authorized_senders` if the deployment will use the optional node allowlist.
+10. Verify that `FZ` commands sent on the public/default channel are ignored.
+11. If the allowlist is enabled, verify that commands from a non-allowlisted node are ignored.
+12. Decide operationally whether `BLACKOUT` should be distinct from `STOP`.
+13. Perform a real-world Meshtastic range/reliability test before deployment.
 
 These are deployment and reliability tests. They do not change the feasibility conclusion.
 
@@ -739,7 +828,7 @@ Audio synchronization remains FPP's responsibility; Follyizer only tells FPP wha
 
 **Feasibility: proven.**
 
-As of August 10, 2026:
+As of August 17, 2026:
 
 - Persistent Meshtastic connection — **working**
 - Receive remote commands — **working**
@@ -750,6 +839,9 @@ As of August 10, 2026:
 - `FZ STOP` — **working**
 - Case-insensitive command entry — **working**
 - Real FPP playback state returned over mesh — **working**
+- Dedicated Meshtastic control-channel enforcement — **implemented**
+- Optional authorized-sender allowlist — **implemented**
+- Meshtastic PSK kept outside Follyizer/Git — **by design**
 - Automatic status broadcast — **intentionally not used**
 - Production hardening — **next phase**
 - Playa deployment — **not yet tested**
@@ -779,6 +871,8 @@ The project also acknowledges the support and community around:
 Contributions, deployment experience, bug reports, and field-test results are welcome.
 
 The most useful contributions now are likely to be around **reliability on real installations**: boot behavior, radio reconnection, FPP restart handling, logging, authorization, and playa-scale Meshtastic testing.
+
+Special thanks to **ayysasha** for Follyizer's first external pull request, which added control-channel enforcement and optional sender authorization for safer deployment.
 
 ---
 
